@@ -34,7 +34,13 @@ QuantForge is an agentic AI engine that automatically researches, generates, sol
 - No impossible scenarios or hallucinated values
 - Ready for quizzes, test banks, or educational apps
 
+![QuantForge Workflow Screenshot](docs/main-circuit.png)
+![QuantForge Workflow Screenshot](docs/Practice-Circuit.png)
 
 ## 📄 License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+## Created By
+
+Rudresh Naidu & Jordan Dsouza
