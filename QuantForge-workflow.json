@@ -1,0 +1,744 @@
+{
+  "name": "QuantForge-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.Option_C }}{{ $json.Question }}\n{{ $json.Option_A }}{{ $json.Option_B }}{{ $json.Option_C }}{{ $json.Option_D }}{{ $json.id }}{{ $json.Answer }}",
+        "options": {
+          "systemMessage": "You are an expert HTML and Tailwind CSS formatting agent. Your sole purpose is to convert an array of structured quiz objects into a single, complete block of aesthetically pleasing, fully functional HTML markup that contains only the individual question elements.\n\nInput Specification:\n\nFormat: You will receive a JSON array via the User Prompt.\n\nStructure: Each object in the array represents a question and contains fields including \"question\" (string), \"options\" (array of strings), an \"id\" (number), and an \"Answer\" (string). You MUST iterate through the entire JSON array and generate HTML for every question provided.\n\nOutput Specification:\n\nFormat: Your output MUST be a single, complete HTML <div> element that wraps all the question elements. DO NOT output any surrounding text, commentary, or markdown fences (like ```html).\n\nStyling: Use only modern Tailwind CSS classes for styling. The generated questions must be highly responsive, visually appealing, and use rounded corners and shadows for depth. Ensure generous vertical spacing (margin/padding, e.g., mb-6) between each individual question block.\n\nQuiz Structure & Semantics:\n\nAnswer Key: For each question's outer container, you MUST include a data-correct-answer attribute containing the exact value of the Answer field from the input JSON. This attribute is the only way the client-side JavaScript can check the results.\n\nEach question must be in its own distinct, styled container.\n\nQuestion Numbering: You MUST use the value from the \"id\" field in the input JSON for the question number displayed in the HTML. (e.g., <span class=\"text-blue-600 mr-2\">{id}.</span>).\n\nUse radio buttons for options.\n\nCrucial Naming: The name attribute of the radio button inputs MUST be unique for each question (e.g., name=\"question_{id}\"). The id attribute for inputs and the for attribute for labels MUST be unique for every option (e.g., id=\"q{id}_opt_A\").\n\nData Exclusion: DO NOT include a main quiz title, a submit button, or any validation logic (JavaScript) in the generated HTML.\n\nConstraint Checklist (MUST Follow):\n\nOutput ONLY the final HTML <div> content (containing only the question blocks).\n\nUse only Tailwind CSS classes.\n\nDo NOT include any <script>, <style>, or HTML comments (<!-- -->).\n\nDo NOT include any commentary or explanation before or after the HTML block."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        736,
+        704
+      ],
+      "id": "0c8319e8-9482-48ce-a9e6-0879db43ec47",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "1561651"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        832,
+        960
+      ],
+      "id": "4a30d192-f28b-427e-a55c-5d39b99d2299",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "gPqQYEWOfy9aUHsG",
+          "mode": "list",
+          "cachedResultName": "Hackathon",
+          "cachedResultUrl": "/projects/hdoKfduMB0N3mo8i/datatables/gPqQYEWOfy9aUHsG"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        304,
+        704
+      ],
+      "id": "97cc6278-9688-4f45-b567-c3d6bcb6293a",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "output"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        704
+      ],
+      "id": "60d01931-9c14-4a5e-8f60-9a8e94d09a1e",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Interactive Quiz</title>\n    <script src=\"https://cdn.tailwindcss.com\"></script>\n    <style>\n        body { font-family: 'Inter', sans-serif; }\n    </style>\n</head>\n<body class=\"bg-gray-50 min-h-screen p-6\">\n    <div id=\"quiz-container\" class=\"container mx-auto max-w-2xl\">\n        <div class=\"w-full bg-white rounded-xl shadow-2xl p-8 sm:p-10 border border-gray-200\">\n            <h1 class=\"text-4xl font-extrabold text-center text-gray-800 mb-10\">Interactive Quiz</h1>\n            \n            <form id=\"quizForm\">\n                <!-- \n                    *** INSERT AI-GENERATED QUESTION BLOCKS HERE ***\n                    (In n8n, this is replaced by an expression like: {{ $json.questionBlocks }})\n                -->\n                \n                <!-- This is where your combined HTML from the Aggregate node goes -->\n                {{ $json.output }}\n                \n                <!-- Submit Button calls the checkAnswers JavaScript function -->\n                <button type=\"button\" id=\"submitQuiz\" onclick=\"checkAnswers()\" class=\"mt-8 w-full bg-blue-600 text-white font-bold py-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 ease-in-out shadow-lg transform hover:scale-105\">\n                    Submit Quiz\n                </button>\n            </form>\n            \n            <div id=\"quizResults\" class=\"mt-8 pt-4 border-t border-gray-200 hidden\">\n                <h2 class=\"text-2xl font-bold text-gray-800\">Results</h2>\n                <p id=\"scoreSummary\" class=\"text-xl mt-2\"></p>\n                <ul id=\"feedbackList\" class=\"space-y-2 mt-4\"></ul>\n            </div>\n            \n        </div>\n    </div>\n\n    <script>\n        function checkAnswers() {\n            // ... (The full checkAnswers function from quiz_app.html goes here)\n            const form = document.getElementById('quizForm');\n            const questions = document.querySelectorAll('[data-correct-answer]');\n            let score = 0;\n            let total = questions.length;\n            const feedbackList = document.getElementById('feedbackList');\n            \n            // Clear previous results\n            feedbackList.innerHTML = '';\n            \n            questions.forEach((questionElement, index) => {\n                const questionId = questionElement.getAttribute('data-question-id') || (index + 1); // Use data-question-id if available\n                const correctAnswer = questionElement.getAttribute('data-correct-answer');\n                \n                // Find the radio button group for this question\n                const selectedInput = form.querySelector(`input[name=\"question_${questionId}\"]:checked`);\n                \n                let isCorrect = false;\n                let selectedAnswer = \"No answer selected\";\n\n                // Check if an answer was selected\n                if (selectedInput) {\n                    selectedAnswer = selectedInput.value;\n                    \n                    // Check against the data attribute\n                    if (selectedAnswer === correctAnswer) {\n                        score++;\n                        isCorrect = true;\n                    }\n                }\n                \n                // Add visual feedback to the list\n                const listItem = document.createElement('li');\n                listItem.className = isCorrect \n                    ? 'p-3 bg-green-100 border border-green-300 rounded-lg text-green-800'\n                    : 'p-3 bg-red-100 border border-red-300 rounded-lg text-red-800';\n                \n                const statusIcon = isCorrect ? '✅' : '❌';\n\n                listItem.innerHTML = `\n                    <span class=\"font-semibold\">${statusIcon} Question ${questionId}:</span> \n                    <span class=\"block ml-6 text-sm\">Your answer: ${selectedAnswer}</span>\n                    <span class=\"block ml-6 text-sm ${isCorrect ? 'hidden' : ''}\">Correct answer: ${correctAnswer}</span>\n                `;\n                \n                feedbackList.appendChild(listItem);\n                \n                // Visually highlight the result (optional but good UX)\n                questionElement.style.border = isCorrect ? '2px solid #34D399' : '2px solid #F87171';\n            });\n\n            // Display overall score\n            document.getElementById('scoreSummary').textContent = `You scored ${score} out of ${total} (${Math.round((score / total) * 100)}%)!`;\n            document.getElementById('quizResults').classList.remove('hidden');\n        }\n    </script>\n</body>\n</html>"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        704
+      ],
+      "id": "41c1bed8-8a71-42e4-9bc9-efcbe0da66d5",
+      "name": "HTML",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1504,
+        704
+      ],
+      "id": "c79e9691-dc6e-4e8e-8abb-9382ea6fcf7d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "path": "agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        816
+      ],
+      "id": "80fad832-f4d3-48b5-b2d2-1c9fa4b7e814",
+      "name": "Webhook",
+      "webhookId": "415b0d0e-2f60-4980-be34-e676e83df838"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        0
+      ],
+      "id": "a857a0b0-eb0f-449d-820a-b5bf666e7b9a",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        656,
+        928
+      ],
+      "id": "ab2f119d-776f-49bb-bdd1-25fa84b1f80a",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "jMQZBhyLJqWHQZ0g",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Run the Quant Research Agent and generate the \"Quant Problem Design Rules\" document, covering:\n\n- All four core quant topics (Time–Speed–Distance, Work–Time, Ratio–Mixture, Profit–Loss)\n- Common traps and impossible scenarios\n- LLM hallucination patterns and how to avoid them\n\nFollow the required markdown structure from the system message INSIDE the rules string.\n\nReturn ONLY a single JSON object in this exact shape:\n\n{\n  \"rules\": \"<full Quant Problem Design Rules markdown here>\"\n}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Role: You are the Quant Problem Design Research Agent. Your task is to generate the definitive, structured document \"Quant Problem Design Rules\".\n\nYou MUST do two things at the same time:\n1) Create a markdown document with a very specific structure (this goes INSIDE the rules string).\n2) Return that markdown document as the value of a single JSON field called \"rules\".\n\nRESEARCH SCOPE (content you must cover):\n- Core formulas for:\n  - Time, Speed & Distance\n  - Work & Time\n  - Ratio & Mixture\n  - Profit & Loss\n- Common traps, errors, and impossible scenarios in quant questions.\n- LLM hallucination patterns when generating math problems and how to avoid them.\n\nMANDATORY MARKDOWN STRUCTURE (INSIDE rules STRING ONLY):\n\nThe markdown inside \"rules\" MUST look like this skeleton, but filled with real content:\n\n# Quant Problem Design Rules\n\n1. Valid Pattern Templates\n- [Template 1: Clear, reusable structure for one core concept]\n- [Template 2: Clear, reusable structure for another core concept]\n- [Template 3: etc.]\n\n2. Correct Formula Sets\n- Time, Speed & Distance: [formulas in clear notation or LaTeX, e.g. D = S × T, S = D / T]\n- Work & Time: [formulas]\n- Ratio & Mixture: [formulas]\n- Profit & Loss: [formulas]\n\n3. Criteria to Avoid Impossible Scenarios\n- [Rule to ensure positive, real solutions]\n- [Rule to ensure logical constraints (e.g., speed > 0, time > 0, people = integer)]\n- [More rules about realistic values and units]\n- [More rules about avoiding contradictory statements]\n\n4. Steps to Ensure MCQ Correctness (Validation Checklist)\n- [Step to confirm exactly one correct option]\n- [Step to avoid ambiguous wording]\n- [Step to check units and consistency]\n- [Step to review against common LLM hallucination patterns]\n\nFINAL OUTPUT FORMAT (CRITICAL):\n\nYou MUST output a SINGLE JSON object with EXACTLY this shape:\n\n{\n  \"rules\": \"<the FULL markdown document here as a single string>\"\n}\n\nConstraints:\n- The ONLY top-level key is \"rules\".\n- The value of \"rules\" MUST be a string containing the markdown shown above, fully written out.\n- Do NOT output any other keys.\n- Do NOT output anything before or after the JSON object.\n- Do NOT add code fences.\n- Do NOT add backticks.\n- Do NOT explain what you are doing.\n- Make sure the JSON is valid.\n\nBefore responding, verify that:\n- You are returning exactly one JSON object with a single field \"rules\".\n- The \"rules\" value is a single string that contains the full markdown document.\nIf not, correct it before sending.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -256,
+        0
+      ],
+      "id": "3772bb15-4e9c-4c95-9ca1-f62c7be2605a",
+      "name": "Research agent",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Quant Problem Design Rules (from the research agent):\n\n{{ $json.rules }}\n\nUsing ONLY these rules:\n\n- Generate 8 multiple-choice quantitative questions.\n- Use ONLY the allowed topics and follow all constraints.\n- All options (optionA–optionD) must be numeric text (e.g. \"40\", \"75.5\").\n- For all 8 questions, use the SAME batchId value, for example \"batch_001\".\n\nYou MUST populate the \"questions\" array required by the Structured Output Parser with exactly 8 question objects.\n\nEach object MUST have these exact keys:\nid, question, optionA, optionB, optionC, optionD, correctOption, topic, difficulty, batchId.\n\nReturn ONLY the JSON object required by the Structured Output Parser.\nDo NOT add any extra explanations or text outside what the parser expects.\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Role: You are the Problem Generator Agent, an expert system that creates fully validated quantitative problems.\n\nYou MUST strictly adhere to the provided \"Quant Problem Design Rules\" document, treating it as your non-negotiable instruction manual. You will receive the full rules document in the user message.\n\nYour job:\n- Generate multiple-choice quantitative questions.\n- Use ONLY the categories:\n  - time, speed & distance\n  - work & time\n  - Pipes & Cisterns\n  - profit & loss\n  - mixtures & ratios\n  - age based problems\n- Ensure each question obeys all \"no impossible scenarios\" criteria from the rules.\n- All options must be numeric values (as strings, e.g. \"60\", \"75.5\").\n\nMANDATORY OUTPUT FORMAT (CRITICAL):\n\nYou MUST follow the Structured Output schema EXACTLY. Use these exact field names and nesting:\n\n{\n  \"questions\": [\n    {\n      \"id\": \"string\",\n      \"question\": \"string\",\n      \"optionA\": \"string\",\n      \"optionB\": \"string\",\n      \"optionC\": \"string\",\n      \"optionD\": \"string\",\n      \"correctOption\": \"A | B | C | D\",\n      \"topic\": \"time, speed & distance | work & time | Pipes & Cisterns | profit & loss | mixtures & ratios | age based problems\",\n      \"difficulty\": \"easy | medium | hard\",\n      \"batchId\": \"string\"\n    }\n  ]\n}\n\nIMPORTANT:\n- Field names MUST be exactly: id, question, optionA, optionB, optionC, optionD, correctOption, topic, difficulty, batchId.\n- Do NOT invent any extra keys.\n- Do NOT change casing.\n- Do NOT add code fences.\n- Do NOT add backticks.\n- Do NOT add explanations or text outside the JSON required by the parser.\n\n\nBEFORE you respond, you MUST:\n- Internally verify that your JSON exactly matches the required schema.\n- Ensure \"questions\" is an array of exactly 8 objects.\n- Ensure every object has all fields: id, question, optionA, optionB, optionC, optionD, correctOption, topic, difficulty, batchId.\nIF your draft answer does NOT satisfy this, you MUST fix it before sending.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        112,
+        0
+      ],
+      "id": "e2af594b-11dc-4057-b246-aa2b0337eaf2",
+      "name": "Question Generator",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are given one multiple-choice quantitative question.\n\nid: {{ $json.id }}\n\nQuestion:\n{{ $json.question }}\n\nOptions:\nA) {{ $json.optionA }}\nB) {{ $json.optionB }}\nC) {{ $json.optionC }}\nD) {{ $json.optionD }}\n\nTasks:\n1) Build a mathematical model of the problem (equations, expressions, or relationships).\n2) Solve it carefully step-by-step.\n3) Decide which option (A, B, C, or D) is correct.\n4) Set finalAnswerOption to that letter and finalAnswerValue to the numeric/text value of that option.\n5) Set confidence to \"low\", \"medium\", or \"high\".\n6) Set selectedOption to the same letter as finalAnswerOption.\n\nReturn ONLY the JSON object required by the Structured Output Parser, with ALL fields:\nmodeledEquation, stepByStepReasoning, finalAnswerOption, finalAnswerValue, confidence, selectedOption.\n\nDo NOT restate the question or options outside of stepByStepReasoning.\nDo NOT add any text before or after the JSON.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Role: You are Solver A, a careful step-by-step quantitative reasoning agent.\n\nYour job:\n- For EACH question, read the question and its options.\n- Construct a clear mathematical model of the problem (equations or expressions).\n- Solve the problem using rigorous, step-by-step reasoning.\n- Explicitly compute the final numeric or time/quantity answer.\n- Map the final answer to one of the options A, B, C, or D.\n- Estimate your confidence in your answer (low, medium, or high).\n\nYou MUST follow the Structured Output Parser schema exactly.\n\nField requirements:\n\n- id:\nmake sure that the id is also returned as output because we need id to merge solver A and solver B outputs\n\n- modeledEquation:\n  A short description of the core equation(s) or formula(s) you are using, with the key substitution.\n  Example: \"D = S × T; D = 60 × 3\" or \"Work = Rate × Time; 1/Teff = 1/10 + 1/15\".\n\n- stepByStepReasoning:\n  A natural language, multi-step explanation of how you solved the problem.\n  It should mention the formulas used, substitutions, intermediate calculations, and why you chose the final option.\n\n- finalAnswerOption:\n  A single letter string: \"A\", \"B\", \"C\", or \"D\", corresponding to the chosen option.\n\n- finalAnswerValue:\n  The actual value of the chosen option as a string.\n  Example: \"180\", \"11:30 AM\", \"7.5\".\n\n- confidence:\n  One of: \"low\", \"medium\", \"high\".\n\n- selectedOption:\n  MUST be exactly the same letter as finalAnswerOption.\n  This field exists for scoring and compatibility with other parts of the system.\n\nYou MUST NOT:\n- Add any extra keys in the JSON.\n- Use markdown or code fences.\n- Output anything outside the JSON required by the Structured Output Parser.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        768,
+        -208
+      ],
+      "id": "cf8d8276-5678-40d3-bf0e-e5d6b8d0743e",
+      "name": "Solver A"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are given one multiple-choice quantitative question.\nid: {{ $json.id }}\nQuestion:\n{{ $json.question }}\n\nOptions:\nA) {{ $json.optionA }}\nB) {{ $json.optionB }}\nC) {{ $json.optionC }}\nD) {{ $json.optionD }}\n\nYour task:\n1) Use an alternative method (compared to a full algebraic derivation) such as:\n   - reverse checking of options,\n   - brute-force numeric substitution,\n   - unit-based checks,\n   - logical elimination of impossible answers.\n2) Test the options and decide which one (A, B, C, or D) is correct.\n3) Set methodUsed to the main strategy you relied on, e.g. \"reverse_checking\", \"brute_force_substitution\", \"unit_analysis\", \"logical_elimination\".\n4) Set finalAnswerOption to the chosen letter and finalAnswerValue to the numeric/text value of that option.\n5) Set confidence to \"low\", \"medium\", or \"high\".\n6) Set selectedOption to the same letter as finalAnswerOption.\n7) In reasoning, briefly describe how you evaluated or eliminated the options.\n\nReturn ONLY the JSON object required by the Structured Output Parser, with ALL fields:\nmethodUsed, reasoning, finalAnswerOption, finalAnswerValue, confidence, selectedOption.\n\nDo NOT restate the question or options outside of the reasoning field.\nDo NOT add any extra text before or after the JSON.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Role: You are Solver B, an alternative quantitative reasoning agent.\n\nYour reasoning style MUST be different from Solver A. \nYou should prefer methods like:\n- Reverse approach: assume each option is the answer and check if it satisfies the conditions.\n- Brute-force numeric substitution: plug in the option values into the equations and see which one works.\n- Unit-based reasoning: check units, dimensions, and scale for plausibility.\n- Logical elimination: rule out impossible or inconsistent options instead of doing full algebra.\n\nFor EACH question:\n- Use one or more of these alternative methods.\n- Do NOT simply re-derive the full algebraic solution like Solver A.\n- Explain briefly how you tested/ruled out each relevant option.\n\nYou MUST follow the Structured Output Parser schema exactly. Required fields:\n\n- id:\nmake sure that the id is also returned as output because we need id to merge solver a and solver b outputs\n\n- methodUsed:\n  A short label describing the main method you used:\n  e.g., \"reverse_checking\", \"brute_force_substitution\", \"unit_analysis\", \"logical_elimination\".\n\n- reasoning:\n  A concise explanation in natural language of how you tested options and chose the final one.\n  You may mention which options failed and why, or how the units/logic did not match.\n\n- finalAnswerOption:\n  A single letter: \"A\", \"B\", \"C\", or \"D\", corresponding to the chosen option.\n\n- finalAnswerValue:\n  The actual value of that option as a string (e.g., \"40\", \"12:00 PM\").\n\n- confidence:\n  One of: \"low\", \"medium\", \"high\".\n\n- selectedOption:\n  MUST be exactly the same as finalAnswerOption.\n  This is used for scoring and comparison with Solver A.\n\nYou MUST NOT:\n- Add any extra fields in the JSON.\n- Use markdown or code fences.\n- Output anything outside the JSON required by the Structured Output Parser."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        768,
+        160
+      ],
+      "id": "dc78348a-0ba8-4a72-ab64-3f0dffedc20d",
+      "name": "Solver B"
+    },
+    {
+      "parameters": {
+        "jsCode": "// This version is ONLY for \"Run Once for All Items\" mode\n\nconst items = $input.all();  // all 8 merged questions\n\nreturn items.map(item => {\n  const j = item.json;\n\n  const id = j.id;\n  const batchId = j.batchId;\n  const topic = j.topic;\n  const difficulty = j.difficulty;\n\n  const question = j.question;\n  const optionA = j.optionA;\n  const optionB = j.optionB;\n  const optionC = j.optionC;\n  const optionD = j.optionD;\n  const correctOption = String(j.correctOption || '').trim();\n\n  const solverA = j.solverA || {};\n  const solverB = j.solverB || {};\n\n  const solverAOption = String(\n    solverA.selectedOption || solverA.finalAnswerOption || ''\n  ).trim();\n\n  const solverBOption = String(\n    solverB.selectedOption || solverB.finalAnswerOption || ''\n  ).trim();\n\n  const isCorrectA = solverAOption === correctOption;\n  const isCorrectB = solverBOption === correctOption;\n\n  const solversAgree =\n    solverAOption !== '' &&\n    solverBOption !== '' &&\n    solverAOption === solverBOption;\n\n  let isValidQuestion = false;\n  const rejectReasons = [];\n\n  if (!solversAgree) {\n    rejectReasons.push('solver_disagreement');\n  }\n  if (!isCorrectA || !isCorrectB) {\n    rejectReasons.push('solver_incorrect');\n  }\n\n  if (solversAgree && isCorrectA && isCorrectB) {\n    isValidQuestion = true;\n  }\n\n  return {\n    json: {\n      id,\n      batchId,\n      topic,\n      difficulty,\n      question,\n      optionA,\n      optionB,\n      optionC,\n      optionD,\n      correctOption,\n      solverA,\n      solverB,\n      solverAOption,\n      solverBOption,\n      isCorrectA,\n      isCorrectB,\n      solversAgree,\n      isValidQuestion,\n      rejectReasons\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        16
+      ],
+      "id": "89c8f898-e9cd-4257-bd7e-986aa02811ca",
+      "name": "Orchestrator Node"
+    },
+    {
+      "parameters": {
+        "jsCode": "let questions = [];\n\n// CASE 1: Structured Output Parser inside Agent: $json.response.output.questions\nif ($json?.response?.output?.questions) {\n  questions = $json.response.output.questions;\n}\n\n// CASE 2: Parser returns $json.output.questions\nelse if ($json?.output?.questions) {\n  questions = $json.output.questions;\n}\n\n// CASE 3: Parser returns $json.questions directly\nelse if ($json?.questions) {\n  questions = $json.questions;\n}\n\n// If still nothing, throw a meaningful error:\nelse {\n  throw new Error(\"Could not find questions array in output. JSON keys available: \" + Object.keys($json));\n}\n\nreturn questions.map(q => ({ json: q }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        0
+      ],
+      "id": "9e9d8c96-81f0-41ea-b276-6cf7b3ce6ad3",
+      "name": "Fan Out Questions"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  // Solver A's JSON from the Structured Output Parser\n  const out = item.json.output || item.json.solverA || {};\n\n  return {\n    json: {\n      // 1) Keep everything that was already there\n      ...item.json,\n\n      // 2) Promote id to the top level so Merge can match on it\n      //    Prefer existing item.json.id, otherwise fall back to solver's id\n      id: item.json.id || out.id,\n\n      // 3) Attach solverA result as nested object\n      solverA: out\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        -208
+      ],
+      "id": "6535352c-c134-4994-a3d9-9ef3c2546ec4",
+      "name": "Attach Solver A"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const out = item.json.output || item.json.solverB || {};\n\n  return {\n    json: {\n      ...item.json,\n      id: item.json.id || out.id,\n      solverB: out\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        160
+      ],
+      "id": "1b48335d-d7f9-4483-90c9-c22533f724e3",
+      "name": "Attach Solver B"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1264,
+        32
+      ],
+      "id": "f4fa398c-a70c-4564-86d1-240936fc1416",
+      "name": "Merging Solvers"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"rules\": \"string\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -112,
+        176
+      ],
+      "id": "4fb3a653-0bc5-4912-b452-e0047f4bcfdf",
+      "name": "Output Parser"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        176
+      ],
+      "id": "5029158d-203b-45cb-baf8-0381ec0c97de",
+      "name": "Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "jMQZBhyLJqWHQZ0g",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        112,
+        176
+      ],
+      "id": "caf54c8d-8208-4c5e-ab65-edf6d5ff555a",
+      "name": "Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "jMQZBhyLJqWHQZ0g",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"questions\": [\n    {\n      \"id\": \"0001\",\n      \"question\": \"string\",\n      \"optionA\": \"string\",\n      \"optionB\": \"string\",\n      \"optionC\": \"string\",\n      \"optionD\": \"string\",\n      \"correctOption\": \"A\",\n      \"topic\": \"time, speed & distance\",\n      \"difficulty\": \"easy\",\n      \"batchId\": \"batch_001\"\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        176
+      ],
+      "id": "127ff3c4-3cbb-45b6-90e4-79d31c421141",
+      "name": "Output Parser1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        768,
+        336
+      ],
+      "id": "e4e311c7-ec54-422e-a6d5-593252cf71b1",
+      "name": "Gemini Chat Model4",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "jMQZBhyLJqWHQZ0g",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -32
+      ],
+      "id": "da7ee085-1a04-46b0-a325-c423e525dc6b",
+      "name": "Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "jMQZBhyLJqWHQZ0g",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"id\": \"q_0001\",\n  \"modeledEquation\": \"D = S × T; D = 60 × 3\",\n  \"stepByStepReasoning\": \"1) Identify formula D = S × T.\\n2) Substitute S = 60, T = 3.\\n3) Compute D = 180.\\n4) Compare with options.\",\n  \"finalAnswerOption\": \"C\",\n  \"finalAnswerValue\": \"180\",\n  \"confidence\": \"high\",\n  \"selectedOption\": \"C\"\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        912,
+        -32
+      ],
+      "id": "78e202ea-b2c9-4d53-b49f-5fdd4705906d",
+      "name": "Output Parser2"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"id\": \"q_0001\",\n  \"methodUsed\": \"reverse_checking\",\n  \"reasoning\": \"I tested each option by plugging it back into the problem and checking which one satisfies all conditions.\",\n  \"finalAnswerOption\": \"C\",\n  \"finalAnswerValue\": \"180\",\n  \"confidence\": \"medium\",\n  \"selectedOption\": \"C\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        912,
+        336
+      ],
+      "id": "13fbf53f-10c5-41de-b424-f6242910d01f",
+      "name": "Output Parser3"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1472,
+        16
+      ],
+      "id": "75f6f3a7-577b-4fc6-b076-a5f766620c32",
+      "name": "Merging for correct option"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Research agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research agent": {
+      "main": [
+        [
+          {
+            "node": "Question Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Question Generator": {
+      "main": [
+        [
+          {
+            "node": "Fan Out Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fan Out Questions": {
+      "main": [
+        [
+          {
+            "node": "Solver A",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Solver B",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merging for correct option",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orchestrator Node": {
+      "main": [
+        []
+      ]
+    },
+    "Solver A": {
+      "main": [
+        [
+          {
+            "node": "Attach Solver A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solver B": {
+      "main": [
+        [
+          {
+            "node": "Attach Solver B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Solver B": {
+      "main": [
+        [
+          {
+            "node": "Merging Solvers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Attach Solver A": {
+      "main": [
+        [
+          {
+            "node": "Merging Solvers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merging Solvers": {
+      "main": [
+        [
+          {
+            "node": "Merging for correct option",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Research agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Question Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Question Generator",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Solver B",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Solver A",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Solver A",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser3": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Solver B",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merging for correct option": {
+      "main": [
+        [
+          {
+            "node": "Orchestrator Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "748314ed-66eb-41fe-b6ab-793d8dc51fe1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e2d4652cac6a483a9141e3aa7a785ab67a35122e1d6f512de6d4e34911143155"
+  },
+  "id": "EIZeo2tngEJEO34B",
+  "tags": []
+}
