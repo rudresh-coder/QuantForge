@@ -34,8 +34,7 @@ QuantForge is an agentic AI engine that automatically researches, generates, sol
 - No impossible scenarios or hallucinated values
 - Ready for quizzes, test banks, or educational apps
 
-![QuantForge Workflow Screenshot](docs/main-circuit.png)
-![QuantForge Workflow Screenshot](docs/Practice-Circuit.png)
+![QuantForge Workflow Screenshot](docs/datatable.png)
 
 ## 📄 License
 
