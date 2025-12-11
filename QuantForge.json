@@ -93,7 +93,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();  // all 8 merged questions\n\nreturn items.map(item => {\n  const j = item.json;\n\n  const id = j.id;\n  const batchId = j.batchId;\n  const topic = j.topic;\n  const difficulty = j.difficulty;\n\n  const question = j.question;\n  const optionA = j.optionA;\n  const optionB = j.optionB;\n  const optionC = j.optionC;\n  const optionD = j.optionD;\n  const correctOption = String(j.correctOption || '').trim();\n\n  const solverA = j.solverA || {};\n  const solverB = j.solverB || {};\n\n  const solverAOption = String(\n    solverA.selectedOption || solverA.finalAnswerOption || ''\n  ).trim();\n\n  const solverBOption = String(\n    solverB.selectedOption || solverB.finalAnswerOption || ''\n  ).trim();\n\n  const isCorrectA = solverAOption === correctOption;\n  const isCorrectB = solverBOption === correctOption;\n\n  const solversAgree =\n    solverAOption !== '' &&\n    solverBOption !== '' &&\n    solverAOption === solverBOption;\n\n  let isValidQuestion = false;\n  const rejectReasons = [];\n\n  if (!solversAgree) {\n    rejectReasons.push('solver_disagreement');\n  }\n  if (!isCorrectA || !isCorrectB) {\n    rejectReasons.push('solver_incorrect');\n  }\n\n  if (solversAgree && isCorrectA && isCorrectB) {\n    isValidQuestion = true;\n  }\n\n  return {\n    json: {\n      id,\n      batchId,\n      topic,\n      difficulty,\n      question,\n      optionA,\n      optionB,\n      optionC,\n      optionD,\n      correctOption,\n      solverA,\n      solverB,\n      solverAOption,\n      solverBOption,\n      isCorrectA,\n      isCorrectB,\n      solversAgree,\n      isValidQuestion,\n      rejectReasons\n    }\n  };\n});\n"
+        "jsCode": "const items = $input.all();  // all 8 merged questions\n\nif (!items || items.length === 0) {\n  return [];\n}\n\n// 1) Decide a single batchId for this whole run\n// Prefer the first item's batchId if present, otherwise generate one.\nlet unifiedBatchId = items[0]?.json?.batchId;\nif (!unifiedBatchId) {\n  const now = new Date();\n  unifiedBatchId =\n    'batch_' +\n    String(now.getFullYear()) +\n    String(now.getMonth() + 1).padStart(2, '0') +\n    String(now.getDate()).padStart(2, '0');\n}\n\n// 2) Map each item and FORCE that same batchId\nreturn items.map((item, index) => {\n  const j = item.json || {};\n\n  const id = j.id || `q_${String(index + 1).padStart(3, '0')}`;\n  const batchId = unifiedBatchId;   // 👈 always same for all 8 items\n\n  const topic = j.topic;\n  const difficulty = j.difficulty;\n\n  const question = j.question;\n  const optionA = j.optionA;\n  const optionB = j.optionB;\n  const optionC = j.optionC;\n  const optionD = j.optionD;\n  const correctOption = String(j.correctOption || '').trim();\n\n  const solverA = j.solverA || {};\n  const solverB = j.solverB || {};\n\n  const solverAOption = String(\n    solverA.selectedOption || solverA.finalAnswerOption || ''\n  ).trim();\n\n  const solverBOption = String(\n    solverB.selectedOption || solverB.finalAnswerOption || ''\n  ).trim();\n\n  const isCorrectA = solverAOption === correctOption;\n  const isCorrectB = solverBOption === correctOption;\n\n  const solversAgree =\n    solverAOption !== '' &&\n    solverBOption !== '' &&\n    solverAOption === solverBOption;\n\n  let isValidQuestion = false;\n  const rejectReasons = [];\n\n  if (!solversAgree) {\n    rejectReasons.push('solver_disagreement');\n  }\n  if (!isCorrectA || !isCorrectB) {\n    rejectReasons.push('solver_incorrect');\n  }\n\n  if (solversAgree && isCorrectA && isCorrectB) {\n    isValidQuestion = true;\n  }\n\n  return {\n    json: {\n      id,\n      batchId,            // 👈 now unified\n      topic,\n      difficulty,\n      question,\n      optionA,\n      optionB,\n      optionC,\n      optionD,\n      correctOption,\n      solverA,\n      solverB,\n      solverAOption,\n      solverBOption,\n      isCorrectA,\n      isCorrectB,\n      solversAgree,\n      isValidQuestion,\n      rejectReasons\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -253,8 +253,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2144,
-        0
+        2128,
+        16
       ],
       "id": "ab571bdd-2122-439f-9a66-578f38d21ce1",
       "name": "Is Valid Question?"
@@ -297,25 +297,6 @@
       ],
       "id": "58cd1ea4-26e4-4343-ad4f-c08c122c3fea",
       "name": "flatten"
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [
-        -256,
-        176
-      ],
-      "id": "241598bb-14b8-4801-92c4-616cd35abd2b",
-      "name": "Google Gemini Chat Model",
-      "credentials": {
-        "googlePalmApi": {
-          "id": "jMQZBhyLJqWHQZ0g",
-          "name": "Google Gemini(PaLM) Api account"
-        }
-      }
     },
     {
       "parameters": {
@@ -728,11 +709,30 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        2336,
+        2320,
         -80
       ],
       "id": "1ac3e29b-89c2-4b8e-b8cf-a050d7551932",
       "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        176
+      ],
+      "id": "241598bb-14b8-4801-92c4-616cd35abd2b",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "jMQZBhyLJqWHQZ0g",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -963,17 +963,6 @@
         ]
       ]
     },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Research agent",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Google Gemini Chat Model1": {
       "ai_languageModel": [
         [
@@ -1011,13 +1000,24 @@
       "main": [
         []
       ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "c3e0b833-c3fd-4780-87aa-aeef8a1cdaea",
+  "versionId": "9ac8f5d2-cb80-4eba-98ef-19ec5c5faf3e",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "e2d4652cac6a483a9141e3aa7a785ab67a35122e1d6f512de6d4e34911143155"

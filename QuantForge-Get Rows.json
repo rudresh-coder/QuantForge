@@ -1,0 +1,93 @@
+{
+  "name": "QuantForge-Get Rows",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        -16
+      ],
+      "id": "d129ee73-5864-4366-ab72-76aaa4b93e6c",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "YCUmUmNTXdTVrPw4",
+          "mode": "list",
+          "cachedResultName": "quant_questions",
+          "cachedResultUrl": "/projects/n8Ww8ySj97eE00l3/datatables/YCUmUmNTXdTVrPw4"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "batchid",
+              "keyValue": "batch_001"
+            }
+          ]
+        },
+        "limit": 8
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        144,
+        -16
+      ],
+      "id": "d2fd7610-9323-4d44-8376-eb5ebd920beb",
+      "name": "Get Many Rows"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: many items, each item.json is a row from quant_questions\n// Output: 1 item with a nice \"assessment\" object\n\nconst rows = $input.all().map(it => it.json);\n\nif (rows.length === 0) {\n  return [{\n    json: {\n      error: 'No questions found for this batchId',\n    }\n  }];\n}\n\n// assume all same batchId\nconst batchId = rows[0].batchId;\n\nconst questions = rows.map(r => ({\n  id: r.id,\n  batchId: r.batchId,\n  topic: r.topic,\n  difficulty: r.difficulty,\n  question: r.question,\n  options: [\n    { label: 'A', value: r.optionA },\n    { label: 'B', value: r.optionB },\n    { label: 'C', value: r.optionC },\n    { label: 'D', value: r.optionD },\n  ],\n  correctOption: r.correctOption,\n\n  // you can include as much solver info as you like:\n  solverA: {\n    id: r.solverA_id,\n    modeledEquation: r.solverA_modeledEquation,\n    stepByStepReasoning: r.solverA_stepByStepReasoning,\n    finalAnswerOption: r.solverA_finalAnswerOption,\n    finalAnswerValue: r.solverA_finalAnswerValue,\n    confidence: r.solverA_confidence,\n    selectedOption: r.solverA_selectedOption,\n  },\n  solverB: {\n    id: r.solverB_id,\n    methodUsed: r.solverB_methodUsed,\n    reasoning: r.solverB_reasoning,\n    finalAnswerOption: r.solverB_finalAnswerOption,\n    finalAnswerValue: r.solverB_finalAnswerValue,\n    confidence: r.solverB_confidence,\n    selectedOption: r.solverB_selectedOption,\n  }\n}));\n\nreturn [{\n  json: {\n    batchId,\n    questionCount: questions.length,\n    questions,\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -16
+      ],
+      "id": "a85292a7-2475-4e37-b850-cb174418f34f",
+      "name": "Format DB"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get Many Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Many Rows": {
+      "main": [
+        [
+          {
+            "node": "Format DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "93b348f2-2e9a-4369-a2a7-73c3924caa58",
+  "meta": {
+    "instanceId": "e2d4652cac6a483a9141e3aa7a785ab67a35122e1d6f512de6d4e34911143155"
+  },
+  "id": "zBlkqN4jokc8QwoH",
+  "tags": []
+}
