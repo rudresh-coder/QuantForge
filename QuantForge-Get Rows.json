@@ -2,17 +2,6 @@
   "name": "QuantForge-Get Rows",
   "nodes": [
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        -64,
-        -16
-      ],
-      "id": "d129ee73-5864-4366-ab72-76aaa4b93e6c",
-      "name": "When clicking ‘Execute workflow’"
-    },
-    {
       "parameters": {
         "operation": "get",
         "dataTableId": {
@@ -30,13 +19,13 @@
             }
           ]
         },
-        "limit": 8
+        "limit": 100
       },
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        144,
-        -16
+        -432,
+        0
       ],
       "id": "d2fd7610-9323-4d44-8376-eb5ebd920beb",
       "name": "Get Many Rows"
@@ -48,26 +37,95 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        352,
-        -16
+        -240,
+        0
       ],
       "id": "a85292a7-2475-4e37-b850-cb174418f34f",
       "name": "Format DB"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json)[0];\n\nif (!rows || !rows.questions) {\n  return [{ json: { error: 'No questions found' } }];\n}\n\nconst total = rows.questions.length;\nlet invalid = 0;\nlet regenerations = 0; \nlet accepted = 0;\n\nfor (const q of rows.questions) {\n  \n  const sA = q.solverA || {};\n  const sB = q.solverB || {};\n  const finalA = sA.selectedOption || sA.finalAnswerOption;\n  const finalB = sB.selectedOption || sB.finalAnswerOption;\n  const correct = q.correctOption;\n  const solversAgree = finalA && finalB && finalA === finalB;\n  const isCorrectA = finalA === correct;\n  const isCorrectB = finalB === correct;\n\n  if (solversAgree && isCorrectA && isCorrectB) accepted++;\n  else invalid++;\n}\n\nconst acceptanceRate = total ? Math.round((accepted/total)*10000)/100 : 0;\n\nreturn [{ json: {\n  batchId: rows.batchId,\n  totalGenerated: total,\n  accepted,\n  invalid,\n  regenerations,\n  acceptanceRatePercent: acceptanceRate\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        0
+      ],
+      "id": "58c52030-cd20-437b-a68b-a8770c518dbb",
+      "name": "Accuracy Report"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate a polished quiz HTML (works for single item or array input)\nconst allInputs = $input.all();\n\n// helper to get safe string\nfunction safe(v){ return v === undefined || v === null ? '' : String(v); }\n\n// Build options array in normalized form: [{label:'A', text:'...'}, ...]\nfunction buildOptionsFromQuestion(q) {\n  // prefer explicit optionA..D\n  const a = q.optionA ?? '';\n  const b = q.optionB ?? '';\n  const c = q.optionC ?? '';\n  const d = q.optionD ?? '';\n\n  // If those are empty and q.options exists, use it\n  if ((!a && !b && !c && !d) && Array.isArray(q.options) && q.options.length) {\n    // take up to 4 items; prefer .label/.value shape\n    const mapped = [];\n    const letters = ['A','B','C','D'];\n    for (let i=0;i<4;i++){\n      const src = q.options[i] ?? {};\n      const text = src.value ?? src.label ?? '';\n      mapped.push({ label: letters[i], text: safe(text) });\n    }\n    return mapped;\n  }\n\n  return [\n    { label: 'A', text: safe(a) },\n    { label: 'B', text: safe(b) },\n    { label: 'C', text: safe(c) },\n    { label: 'D', text: safe(d) },\n  ];\n}\n\n// escape html\nfunction escapeHtml(str){\n  return String(str || '')\n    .replace(/&/g,'&amp;')\n    .replace(/</g,'&lt;')\n    .replace(/>/g,'&gt;')\n    .replace(/\"/g,'&quot;')\n    .replace(/'/g,'&#39;');\n}\n\n// Determine items to render\nlet items = [];\n\n// Case 1: single item whose json is array of questions\nif (allInputs.length === 1 && Array.isArray(allInputs[0].json)) {\n  items = allInputs[0].json;\n}\n// Case 2: single item with object question fields (one question)\nelse if (allInputs.length === 1 && allInputs[0].json && allInputs[0].json.question) {\n  items = [allInputs[0].json];\n}\n// Case 3: multiple items, each item.json is a question\nelse {\n  items = allInputs.map(i => i.json || {}).filter(q => Object.keys(q).length);\n}\n\nif (!items.length) {\n  // return minimal page explaining no questions\n  const noHtml = '<!doctype html><html><body><h2>No questions found to render.</h2></body></html>';\n  return [{ json: { id: 'quiz_empty', html: noHtml } }];\n}\n\n// Build HTML\nlet html = `<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Quiz</title>\n<style>\n  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;line-height:1.4;padding:18px;max-width:900px;margin:auto;color:#111}\n  h1{margin-top:0}\n  .question{margin:18px 0;padding:12px;border-radius:10px;background:#fbfbfd;border:1px solid #eee}\n  .qtext{font-weight:600}\n  ul.opts{list-style:none;padding-left:0;margin:8px 0}\n  ul.opts li{margin:6px 0}\n  .feedback{margin-top:8px;font-size:0.95rem}\n  .correct{color:green;font-weight:700}\n  .wrong{color:#c43636;font-weight:700}\n  .controls{position:sticky;top:10px;background:transparent;padding:10px 0;z-index:10}\n  button{padding:8px 12px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer}\n  button.primary{background:#0b74de;color:white;border-color:#0b74de}\n  .result{margin-top:12px;padding:10px;border-radius:8px;background:#f6ffef;border:1px solid #d4f5c9}\n  .small{font-size:0.9rem;color:#555}\n  hr{border:none;border-top:1px solid #eee;margin:18px 0}\n</style>\n</head>\n<body>\n<h1>Quiz</h1>\n<div class=\"controls\">\n  <button id=\"submitBtn\" class=\"primary\">Submit Answers</button>\n  <button id=\"showAnswersBtn\" style=\"margin-left:8px\">Show Correct Answers</button>\n  <button id=\"resetBtn\" style=\"margin-left:8px\">Reset</button>\n  <span id=\"status\" class=\"small\" style=\"margin-left:12px\"></span>\n</div>\n<form id=\"quizForm\" onsubmit=\"return false;\">\n`;\n\n// For each question, render a block with radio inputs\nfor (let i = 0; i < items.length; i++) {\n  const q = items[i];\n  const qid = safe(q.id) || `q${i+1}`;\n  const qnum = i + 1;\n  const qtext = escapeHtml(q.question ?? '(no question)');\n  // normalized options\n  const opts = buildOptionsFromQuestion(q);\n  const correct = (q.correctOption || q.answer || '').toString().trim();\n\n  html += `<div class=\"question\" data-qid=\"${escapeHtml(qid)}\" data-correct=\"${escapeHtml(correct)}\">\n    <div class=\"qtext\">${qnum}. ${qtext}</div>\n    <ul class=\"opts\">`;\n  for (let j = 0; j < opts.length; j++) {\n    const opt = opts[j];\n    const optLabel = escapeHtml(opt.label ?? String.fromCharCode(65+j));\n    const optText = escapeHtml(opt.text ?? '');\n    // input name unique per question (use index to avoid special characters)\n    const inputName = `q_${i}`;\n    const inputId = `q_${i}_${optLabel}`;\n    html += `<li>\n      <label>\n        <input type=\"radio\" name=\"${inputName}\" id=\"${inputId}\" value=\"${optLabel}\">\n        <strong>${optLabel}:</strong> ${optText}\n      </label>\n    </li>`;\n  }\n  html += `</ul>\n    <div class=\"feedback\" style=\"display:none\"></div>\n  </div>\\n<hr>\\n`;\n}\n\nhtml += `</form>\n\n<div id=\"resultArea\"></div>\n\n<script>\n(function(){\n  const submitBtn = document.getElementById('submitBtn');\n  const resetBtn = document.getElementById('resetBtn');\n  const showAnswersBtn = document.getElementById('showAnswersBtn');\n  const status = document.getElementById('status');\n  const resultArea = document.getElementById('resultArea');\n\n  function gradeQuiz() {\n    const questionEls = Array.from(document.querySelectorAll('.question'));\n    let correctCount = 0;\n    let total = questionEls.length;\n\n    questionEls.forEach((qEl, idx) => {\n      const correct = (qEl.dataset.correct || '').trim();\n      const radios = qEl.querySelectorAll('input[type=\"radio\"]');\n      let selected = '';\n      radios.forEach(r => { if (r.checked) selected = r.value; });\n      const feedback = qEl.querySelector('.feedback');\n      feedback.style.display = 'block';\n      if (!selected) {\n        feedback.innerHTML = '<span class=\"wrong\">No answer selected</span>';\n        qEl.classList.remove('correct'); qEl.classList.add('wrong');\n      } else if (selected === correct) {\n        feedback.innerHTML = '<span class=\"correct\">Correct</span>';\n        qEl.classList.add('correct'); qEl.classList.remove('wrong');\n        correctCount++;\n      } else {\n        // find the text of the correct option to show\n        const correctInput = qEl.querySelector(\"input[type='radio'][value='\"+correct+\"']\");\n        let correctText = '';\n        if (correctInput) {\n          const label = correctInput.closest('label');\n          correctText = label ? ' — ' + label.innerText.replace(/^\\\\s*/, '') : '';\n        }\n        feedback.innerHTML = '<span class=\"wrong\">Incorrect</span>' + (correctText ? ('<span class=\\\"small\\\"> Correct: ' + correctText + '</span>') : '');\n        qEl.classList.add('wrong'); qEl.classList.remove('correct');\n      }\n    });\n\n    const percent = Math.round((correctCount/total) * 100);\n    resultArea.innerHTML = '<div class=\"result\"><strong>Score:</strong> ' + correctCount + '/' + total + ' (' + percent + '%)</div>';\n    status.innerText = 'Graded: ' + percent + '%';\n    // disable submit to avoid double-submits\n    submitBtn.disabled = true;\n  }\n\n  function showAnswers() {\n    const questionEls = Array.from(document.querySelectorAll('.question'));\n    questionEls.forEach(qEl => {\n      const correct = (qEl.dataset.correct || '').trim();\n      const correctInput = qEl.querySelector(\"input[type='radio'][value='\"+correct+\"']\");\n      if (correctInput) correctInput.checked = true;\n      const feedback = qEl.querySelector('.feedback');\n      feedback.style.display = 'block';\n      const label = correctInput ? correctInput.closest('label') : null;\n      const correctText = label ? label.innerText.replace(/^\\\\s*/, '') : 'Answer: ' + correct;\n      feedback.innerHTML = '<span class=\"correct\">Correct: ' + correctText + '</span>';\n      qEl.classList.add('correct'); qEl.classList.remove('wrong');\n    });\n    submitBtn.disabled = true;\n    status.innerText = 'Correct answers shown';\n  }\n\n  function resetQuiz(){\n    const form = document.getElementById('quizForm');\n    form.reset();\n    document.querySelectorAll('.feedback').forEach(f => { f.style.display='none'; f.innerHTML=''; });\n    resultArea.innerHTML = '';\n    status.innerText = '';\n    document.querySelectorAll('.question').forEach(q => { q.classList.remove('correct','wrong'); });\n    submitBtn.disabled = false;\n  }\n\n  submitBtn.addEventListener('click', gradeQuiz);\n  showAnswersBtn.addEventListener('click', showAnswers);\n  resetBtn.addEventListener('click', resetQuiz);\n})();\n</script>\n</body>\n</html>`;\n\n// return single item containing HTML\nreturn [{ json: { id: items.length === 1 ? (items[0].id ?? 'quiz_single') : 'quiz_all', html } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        0
+      ],
+      "id": "9bb8cbf5-4fff-4bd0-9726-2cd936a35f43",
+      "name": "Generate Quiz In HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Publish Candidates — ensure optionA..D AND options[] exist\nconst incoming = $input.all() || [];\nlet questions = [];\n\n// 1) Try to extract questions from incoming items\nfor (const it of incoming) {\n  if (it && it.json) {\n    // shape: { json: { questions: [...] } }\n    if (Array.isArray(it.json.questions) && it.json.questions.length) {\n      questions = it.json.questions;\n      break;\n    }\n    // shape: each incoming item is a question row (common after Format DB)\n    if (it.json.question && !Array.isArray(it.json)) {\n      questions = incoming.map(i => i.json);\n      break;\n    }\n    // shape: single item whose .json is itself an array of questions\n    if (Array.isArray(it.json) && it.json.length) {\n      questions = it.json;\n      break;\n    }\n  }\n}\n\n// 2) Fallback: read from a named node if needed (be exact with the node name)\nif (!questions.length) {\n  try {\n    const fmtItems = $items(\"Format DB\"); // change if your node name is different\n    if (fmtItems && fmtItems.length) {\n      if (fmtItems[0].json && fmtItems[0].json.question) {\n        questions = fmtItems.map(i => i.json);\n      } else if (fmtItems[0].json && Array.isArray(fmtItems[0].json.questions)) {\n        questions = fmtItems[0].json.questions;\n      } else if (Array.isArray(fmtItems[0].json)) {\n        questions = fmtItems[0].json;\n      }\n    }\n  } catch (err) {\n    throw new Error(\n      'Failed to read Format DB node. Make sure the node named \"Format DB\" exists and is connected OR the previous node passed question data. Err: ' +\n      (err && err.message ? err.message : String(err))\n    );\n  }\n}\n\nif (!questions || questions.length === 0) {\n  throw new Error('No questions found. Ensure the previous node passed questions or the node \"Format DB\" exists and has output.');\n}\n\n// Helper: normalize an option value to string\nconst safe = v => (v === null || v === undefined) ? '' : String(v);\n\n// Build publishCandidates (one simplified object per question)\n// We include both optionA..D AND options: [{label,value},...]\nconst publishCandidates = questions.map((q, idx) => {\n  const optionA = safe(q.optionA ?? (q.options && q.options[0] && (q.options[0].value ?? q.options[0].label)));\n  const optionB = safe(q.optionB ?? (q.options && q.options[1] && (q.options[1].value ?? q.options[1].label)));\n  const optionC = safe(q.optionC ?? (q.options && q.options[2] && (q.options[2].value ?? q.options[2].label)));\n  const optionD = safe(q.optionD ?? (q.options && q.options[3] && (q.options[3].value ?? q.options[3].label)));\n\n  // build options array always (labels A..D)\n  const optionsArray = [\n    { label: 'A', value: optionA },\n    { label: 'B', value: optionB },\n    { label: 'C', value: optionC },\n    { label: 'D', value: optionD },\n  ];\n\n  return {\n    id: safe(q.id ?? q._id ?? q.question?.slice(0,12) ?? `q_${Math.random().toString(36).slice(2,8)}`),\n    topic: safe(q.topic ?? ''),\n    difficulty: safe(q.difficulty ?? ''),\n    question: safe(q.question ?? ''),\n    optionA,\n    optionB,\n    optionC,\n    optionD,\n    options: optionsArray,\n    correctOption: safe(q.correctOption ?? q.answer ?? '')\n  };\n});\n\nreturn publishCandidates.map(c => ({ json: c }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        0
+      ],
+      "id": "b00a3b91-b01b-4796-879d-b6db95208c30",
+      "name": "Prepare Quiz Questions"
+    },
+    {
+      "parameters": {
+        "path": "quiz",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -640,
+        0
+      ],
+      "id": "d59b240f-5ac8-4d96-81fa-01abe27373fb",
+      "name": "Webhook",
+      "webhookId": "df460a70-1f1e-4409-98d9-2f92616bdc72"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        528,
+        0
+      ],
+      "id": "f3736013-33eb-4ef2-8ca0-e58e363ae5f4",
+      "name": "Respond to Webhook"
     }
   ],
   "pinData": {},
   "connections": {
-    "When clicking ‘Execute workflow’": {
-      "main": [
-        [
-          {
-            "node": "Get Many Rows",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Get Many Rows": {
       "main": [
         [
@@ -78,13 +136,68 @@
           }
         ]
       ]
+    },
+    "Format DB": {
+      "main": [
+        [
+          {
+            "node": "Accuracy Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accuracy Report": {
+      "main": [
+        [
+          {
+            "node": "Prepare Quiz Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Quiz In HTML": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Quiz Questions": {
+      "main": [
+        [
+          {
+            "node": "Generate Quiz In HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Many Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "93b348f2-2e9a-4369-a2a7-73c3924caa58",
+  "versionId": "4712ffed-6afc-4564-9810-2d464d5588c8",
   "meta": {
     "instanceId": "e2d4652cac6a483a9141e3aa7a785ab67a35122e1d6f512de6d4e34911143155"
   },
